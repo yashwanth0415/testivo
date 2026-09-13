@@ -1,0 +1,10 @@
+{
+  "description": "Manage and deploy projects seamlessly with integrated Supabase backend and GitHub repository support for streamlined development workflows.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

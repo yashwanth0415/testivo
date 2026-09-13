@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
             supabase
               .from("exams")
               .select("*", { count: "exact", head: true })
-              .eq("created_by", p.auth_user_id),
+              .eq("owner_id", p.id),
             supabase
               .from("exam_attempts")
               .select("*", { count: "exact", head: true })
@@ -95,7 +95,7 @@ export default function AdminUsersPage() {
     const { data: exams } = await supabase
       .from("exams")
       .select("id, title, created_at, status")
-      .eq("created_by", user.auth_user_id)
+      .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20);
     setSelectedUser({ ...user, exams: (exams || []) as UserExam[] });

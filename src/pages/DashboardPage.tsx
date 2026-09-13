@@ -75,9 +75,9 @@ export default function DashboardPage() {
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile) return;
     fetchDashboardData();
-  }, [user]);
+  }, [user, profile]);
 
   async function fetchDashboardData() {
     if (!user) return;
@@ -85,16 +85,16 @@ export default function DashboardPage() {
     setError(null);
     try {
       const [examsRes, attemptsRes, resultsRes, recentExamsRes] = await Promise.all([
-        supabase.from("exams").select("*", { count: "exact", head: true }).eq("owner_id", user.id),
-        supabase.from("exam_attempts").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("exams").select("*", { count: "exact", head: true }).eq("owner_id", profile?.id),
+        supabase.from("exam_attempts").select("*", { count: "exact", head: true }).eq("user_id", profile?.id),
         supabase
-          .from("exam_results")
+          .from("results")
           .select("percentage, total_score, max_score, created_at, attempt_id, exam_attempts!inner(user_id, exam_id, exams(title))")
-          .eq("exam_attempts.user_id", user.id),
+          .eq("exam_attempts.user_id", profile?.id),
         supabase
           .from("exams")
           .select("*")
-          .eq("owner_id", user.id)
+          .eq("owner_id", profile?.id)
           .order("created_at", { ascending: false })
           .limit(5),
       ]);

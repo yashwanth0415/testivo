@@ -25,7 +25,7 @@ interface ProcessingJob {
   status: string;
   created_at: string;
   profiles?: { full_name?: string; username?: string };
-  file_name?: string;
+  source_file_path?: string;
 }
 
 interface AIConfig {
@@ -33,7 +33,7 @@ interface AIConfig {
   is_active: boolean;
   last_tested_at?: string;
   ai_providers?: { name: string };
-  ai_models?: { name: string; model_id: string };
+  ai_models?: { display_name: string; model_id: string };
 }
 
 export default function AdminDashboardPage() {
@@ -79,12 +79,12 @@ export default function AdminDashboardPage() {
           .gte("created_at", new Date(Date.now() - 14 * 86400000).toISOString()),
         supabase
           .from("ai_configurations")
-          .select("id, is_active, last_tested_at, ai_providers(name), ai_models(name, model_id)")
+          .select("id, is_active, last_tested_at, ai_providers(name), ai_models(display_name, model_id)")
           .eq("is_active", true)
           .single(),
         supabase
           .from("processing_jobs")
-          .select("id, status, created_at, file_name, profiles(full_name, username)")
+          .select("id, status, created_at, source_file_path, profiles(full_name, username)")
           .order("created_at", { ascending: false })
           .limit(10),
       ]);
@@ -217,7 +217,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/50">Model</span>
-                <span className="text-sm text-white font-medium">{aiConfig.ai_models?.name ?? "—"}</span>
+                <span className="text-sm text-white font-medium">{aiConfig.ai_models?.display_name ?? "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/50">Status</span>
@@ -261,7 +261,7 @@ export default function AdminDashboardPage() {
                       <td className="py-2 text-white/80">
                         {job.profiles?.full_name || job.profiles?.username || "—"}
                       </td>
-                      <td className="py-2 text-white/60 max-w-[120px] truncate">{job.file_name || "—"}</td>
+                      <td className="py-2 text-white/60 max-w-[120px] truncate">{job.source_file_path?.split("/").pop() || "—"}</td>
                       <td className="py-2">
                         <span
                           className={`text-xs font-medium px-2 py-0.5 rounded-full ${

@@ -17,7 +17,7 @@ function formatDuration(seconds: number): string {
 export default function ExamInstructionsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [exam, setExam] = useState<Exam | null>(null);
   const [sections, setSections] = useState<ExamSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export default function ExamInstructionsPage() {
         .from("exam_attempts")
         .insert({
           exam_id: exam.id,
-          user_id: user.id,
+          user_id: profile?.id,
           status: "in_progress",
           started_at: new Date().toISOString(),
         })

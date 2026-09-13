@@ -5,7 +5,7 @@ import {
   Maximize2, AlertTriangle, X,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
+import { supabase, callEdgeFunction } from "../lib/supabase";
 import type { Exam, ExamSection, Question, QuestionOption } from "../lib/types";
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
@@ -113,6 +113,7 @@ export default function ExamTakingPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [sourcePdfUrl, setSourcePdfUrl] = useState<string | null>(null);
 
   // UI state
   const [showSubmit, setShowSubmit] = useState(false);
@@ -134,6 +135,10 @@ export default function ExamTakingPage() {
       if (examData) {
         setExam(examData as Exam);
         setTimeRemaining(examData.duration_seconds);
+        if (examData.source_file_path) {
+          const { data: signed } = await supabase.storage.from("exam-pdfs").createSignedUrl(examData.source_file_path, 3600);
+          if (signed?.signedUrl) setSourcePdfUrl(signed.signedUrl);
+        }
       }
       setSections((secsData as ExamSection[]) ?? []);
       setQuestions((qData as QuestionWithOptions[]) ?? []);
@@ -337,17 +342,12 @@ export default function ExamTakingPage() {
       submitted_at: new Date().toISOString(),
     }).eq("id", attemptId);
 
-    const { data: result } = await supabase.from("exam_results").insert({
-      attempt_id: attemptId,
-      total_score: score,
-      max_score: maxScore,
-      percentage: maxScore > 0 ? (score / maxScore) * 100 : 0,
-      correct_count: correct,
-      incorrect_count: incorrect,
-      unanswered_count: unanswered,
-      accuracy: (correct + incorrect) > 0 ? (correct / (correct + incorrect)) * 100 : 0,
-      time_taken_seconds: timeTaken,
-    }).select().single();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const submitResponse = await callEdgeFunction("/submit-exam", {
+      attemptId,
+      answers: Object.fromEntries(Array.from(answers.entries())),
+    }, sessionData.session?.access_token);
+    if (!submitResponse?.success) throw new Error(submitResponse?.error || "Failed to submit exam.");
 
     if (document.fullscreenElement) document.exitFullscreen?.();
     navigate(`/exam/${id}/result?attempt=${attemptId}`);
@@ -460,6 +460,19 @@ export default function ExamTakingPage() {
                 alt={currentQ.question_image_alt ?? "Question image"}
                 className="max-w-full max-h-64 object-contain rounded-xl border border-white/10 mb-6"
               />
+            )}
+
+            {!currentQ.question_image_url && currentQ.source_page && sourcePdfUrl && (
+              <details className="mb-6 rounded-xl border border-white/10 overflow-hidden bg-white/[0.03]">
+                <summary className="cursor-pointer px-4 py-3 text-sm text-white/70 hover:text-white">
+                  View original PDF page {currentQ.source_page}
+                </summary>
+                <iframe
+                  title={`Original PDF page ${currentQ.source_page}`}
+                  src={`${sourcePdfUrl}#page=${currentQ.source_page}`}
+                  className="w-full h-[520px] bg-white"
+                />
+              </details>
             )}
 
             {/* Options */}

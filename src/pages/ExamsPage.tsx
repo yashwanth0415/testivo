@@ -86,7 +86,7 @@ function DeleteModal({ exam, onConfirm, onCancel, deleting }: DeleteModalProps) 
 }
 
 export default function ExamsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,9 +96,9 @@ export default function ExamsPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile) return;
     fetchExams();
-  }, [user]);
+  }, [user, profile]);
 
   async function fetchExams() {
     if (!user) return;
@@ -108,7 +108,7 @@ export default function ExamsPage() {
       const { data, error: err } = await supabase
         .from("exams")
         .select("*")
-        .eq("owner_id", user.id)
+        .eq("owner_id", profile?.id)
         .order("created_at", { ascending: false });
       if (err) throw err;
       setExams((data ?? []) as Exam[]);

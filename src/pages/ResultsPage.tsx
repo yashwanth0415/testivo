@@ -66,7 +66,7 @@ function SkeletonRow() {
 }
 
 export default function ResultsPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [results, setResults] = useState<ResultRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,9 +74,9 @@ export default function ResultsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("All Time");
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !profile) return;
     fetchResults();
-  }, [user]);
+  }, [user, profile]);
 
   async function fetchResults() {
     if (!user) return;
@@ -84,7 +84,7 @@ export default function ResultsPage() {
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from("exam_results")
+        .from("results")
         .select(
           `
           id,
@@ -104,7 +104,7 @@ export default function ResultsPage() {
           )
         `
         )
-        .eq("exam_attempts.user_id", user.id)
+        .eq("exam_attempts.user_id", profile?.id)
         .order("created_at", { ascending: false });
 
       if (err) throw err;

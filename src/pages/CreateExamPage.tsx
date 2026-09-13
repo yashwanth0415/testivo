@@ -5,7 +5,7 @@ import {
   Clock, BookOpen, Layers, Image as ImageIcon, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
+import { supabase, callEdgeFunction } from "../lib/supabase";
 import { AppLayout } from "../components/layout/AppLayout";
 import type { ProcessingJob, ExamSection } from "../lib/types";
 
@@ -63,7 +63,7 @@ interface Step1Props {
 }
 
 function Step1Upload({ onUploaded }: Step1Props) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
@@ -99,7 +99,7 @@ function Step1Upload({ onUploaded }: Step1Props) {
   };
 
   const handleUpload = async () => {
-    if (!file || !user) return;
+    if (!file || !user || !profile) return;
     setUploading(true);
     setError("");
 
@@ -114,7 +114,7 @@ function Step1Upload({ onUploaded }: Step1Props) {
       const { data: job, error: jobError } = await supabase
         .from("processing_jobs")
         .insert({
-          user_id: user.id,
+          user_id: profile?.id,
           source_file_path: filePath,
           status: "processing",
           progress: 0,
@@ -127,9 +127,8 @@ function Step1Upload({ onUploaded }: Step1Props) {
         .single();
       if (jobError) throw jobError;
 
-      await supabase.functions.invoke("process-pdf", {
-        body: { jobId: job.id, filePath, userId: user.id },
-      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      await callEdgeFunction("/process-pdf", { jobId: job.id, filePath }, sessionData.session?.access_token);
 
       onUploaded(job.id, filePath, file.name);
     } catch (e: any) {
@@ -353,7 +352,7 @@ interface Step3Props {
 
 function Step3Configure({ job, fileName }: Step3Props) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [title, setTitle] = useState(fileName.replace(/\.pdf$/i, ""));
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState(60);
@@ -383,10 +382,30 @@ function Step3Configure({ job, fileName }: Step3Props) {
     setSaving(true);
     setError("");
     try {
-      const { data: exam, error: examErr } = await supabase
-        .from("exams")
-        .insert({
-          owner_id: user.id,
+      let examId = job.exam_id;
+      if (!examId) {
+        const { data: exam, error: examErr } = await supabase
+          .from("exams")
+          .insert({
+            owner_id: profile?.id,
+            title,
+            description,
+            source_file_path: job.source_file_path,
+            total_questions: job.questions_found,
+            total_marks: job.questions_found * marksPerQ,
+            duration_seconds: duration * 60,
+            negative_marking: negativeMarks,
+            allow_navigation: allowNav,
+            status: "ready",
+          })
+          .select()
+          .single();
+        if (examErr) throw examErr;
+        examId = exam.id;
+        await supabase.from("processing_jobs").update({ exam_id: exam.id }).eq("id", job.id);
+      } else {
+        const { error: examErr } = await supabase.from("exams").update({
+          owner_id: profile?.id,
           title,
           description,
           source_file_path: job.source_file_path,
@@ -396,15 +415,16 @@ function Step3Configure({ job, fileName }: Step3Props) {
           negative_marking: negativeMarks,
           allow_navigation: allowNav,
           status: "ready",
-        })
-        .select()
-        .single();
-      if (examErr) throw examErr;
-
-      // Update job with exam_id
-      await supabase.from("processing_jobs").update({ exam_id: exam.id }).eq("id", job.id);
-
-      navigate(`/exams/${exam.id}`);
+          updated_at: new Date().toISOString(),
+        }).eq("id", examId).eq("owner_id", profile?.id);
+        if (examErr) throw examErr;
+        if (sections.length) {
+          for (const section of sections) {
+            await supabase.from("exam_sections").update({ duration_seconds: section.duration_seconds || null }).eq("id", section.id).eq("exam_id", examId);
+          }
+        }
+      }
+      navigate(`/exams/${examId}`);
     } catch (e: any) {
       setError(e.message ?? "Failed to create exam.");
       setSaving(false);

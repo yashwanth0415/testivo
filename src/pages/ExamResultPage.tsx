@@ -92,7 +92,7 @@ export default function ExamResultPage() {
     (async () => {
       const [{ data: examData }, { data: resultData }] = await Promise.all([
         supabase.from("exams").select("*").eq("id", id).single(),
-        supabase.from("exam_results").select("*").eq("attempt_id", attemptId).single(),
+        supabase.from("results").select("*").eq("attempt_id", attemptId).single(),
       ]);
       if (examData) setExam(examData as Exam);
       if (resultData) {

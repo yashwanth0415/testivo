@@ -446,10 +446,17 @@ export default function LandingPage() {
             </span>
           </div>
           <p className="text-white/30 text-sm">© {new Date().getFullYear()} Testivo. All rights reserved.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6">
             <a href="#" className="text-white/40 hover:text-white/70 text-sm transition-colors">Privacy</a>
             <a href="#" className="text-white/40 hover:text-white/70 text-sm transition-colors">Terms</a>
             <a href="#" className="text-white/40 hover:text-white/70 text-sm transition-colors">Contact</a>
+            <button
+              onClick={() => navigate("/admin")}
+              className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/70 transition-all hover:border-amber-400/50 hover:bg-amber-500 hover:text-white"
+            >
+              Admin Portal
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </footer>

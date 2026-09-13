@@ -5,7 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js";
 import pdfParse from "npm:pdf-parse@1.1.1";
 
 const app = new Hono();
-const PREFIX = "/make-server-1b359045";
+const PREFIX = "";
 app.use("*", logger(console.log));
 app.use("/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization"], allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], maxAge: 600 }));
 
